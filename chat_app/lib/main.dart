@@ -3,6 +3,8 @@ import 'package:chat_app/services/signaling_service.dart';
 import 'package:chat_app/services/webrtc_service.dart';
 import 'package:chat_app/video_call_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 void main() {
   runApp(VideoCallApp());
 }
@@ -33,21 +35,40 @@ class _HomeScreenState extends State<HomeScreen> {
     _signalingService.connect('http://192.168.26.102:3000'); // Replace with your server URL
   }
 
+
   void _joinRoom() async {
     final roomId = _roomIdController.text.trim();
+
     if (roomId.isNotEmpty) {
-      await _webRTCService.initialize();
-      _signalingService.joinRoom(roomId);
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => VideoCallScreen(
-            signalingService: _signalingService,
-            webRTCService: _webRTCService,
+      // Check permissions
+      if (await _checkPermissions()) {
+        await _webRTCService.initialize();
+        _signalingService.joinRoom(roomId);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VideoCallScreen(
+              signalingService: _signalingService,
+              webRTCService: _webRTCService,
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        // Show an alert or snackbar to inform the user about missing permissions
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Camera and microphone permissions are required")),
+        );
+      }
     }
+  }
+
+  Future<bool> _checkPermissions() async {
+    // Request camera and microphone permissions
+    var cameraStatus = await Permission.camera.request();
+    var microphoneStatus = await Permission.microphone.request();
+
+    // Check if permissions are granted
+    return cameraStatus.isGranted && microphoneStatus.isGranted;
   }
 
   @override
